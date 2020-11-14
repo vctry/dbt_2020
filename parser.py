@@ -1,4 +1,5 @@
-from datetime import datetime
+import time
+from datetime import datetime, timedelta
 
 import pandas as pd
 import requests
@@ -35,20 +36,38 @@ def get_similar(vacancy_id, k):
 
 
 def vacancies_search(keyword, visible=False):
+    now = datetime.now()
+    date_from = now - timedelta(days=35)
+    delta = timedelta(7)
+    date_to = date_from + delta
     url = "https://api.hh.ru/vacancies/"
     params = {"text": keyword, "area": "113", "per_page": "100", "page": 0, "currency": "RUR",
-              "date_from": "2010-01-01", "responses_count_enabled": True}
+              "date_from": date_from.strftime('%Y-%m-%d'), "date_to": date_to.strftime('%Y-%m-%d'),
+              "responses_count_enabled": True}
     items = []
-    while True:
-        request = requests.get(url, params)
-        request.raise_for_status()
-        data = request.json()
-        items.extend(data['items'])
-        page = int(params['page']) + 1
-        if page >= data['pages']:
-            break
-        params['page'] = str(page)
-    items = remove_duplicates(items)
+    while date_to < now + delta:
+        while True:
+            request = requests.get(url, params)
+            request.raise_for_status()
+            data = request.json()
+            items.extend(data['items'])
+            page = int(params['page']) + 1
+            if page >= data['pages']:
+                break
+            params['page'] = str(page)
+            time.sleep(1)
+        if visible:
+            print('[{}-{}] {} {}'.format(date_from.strftime("%Y.%m.%d"),
+                                         date_to.strftime("%Y.%m.%d"),
+                                         data["pages"],
+                                         len(items)))
+
+        date_from = date_to
+        date_to = date_from + delta
+        params["date_from"] = date_from.strftime('%Y-%m-%d')
+        params["date_to"] = date_to.strftime('%Y-%m-%d')
+        time.sleep(1)
+    # items = remove_duplicates(items)
     for i, item in enumerate(items):
         item['key_skills'] = get_key_skills(item['id'])
         if (i + 1) % 50 == 0 and visible:
@@ -60,13 +79,12 @@ def vacancies_search(keyword, visible=False):
 
 
 start = datetime.now()
-items = vacancies_search('python')
+items = vacancies_search('python', True)
 for item in items:
-    date = datetime.strptime(item['published_at'].split('T')[0], '%Y-%m-%d')
-    item['published_at_year'], item['published_at_month'], item['published_at_day'] = date.year, date.month, date.day
-    date = datetime.strptime(item['created_at'].split('T')[0], '%Y-%m-%d')
-    item['created_at_year'], item['created_at_month'], item['created_at_day'] = date.year, date.month, date.day
+    item['published_at'] = datetime.strptime(item['published_at'].split('T')[0], '%Y-%m-%d')
+    item['created_at'] = datetime.strptime(item['created_at'].split('T')[0], '%Y-%m-%d')
     item['area'] = item['area']['name']
+    item['counters'] = item['counters']['responses']
     if item['salary']:
         if item['salary']['from']:
             item['salary_from'] = str(item['salary']['from']) + ' ' + item['salary']['currency']
@@ -80,8 +98,7 @@ for item in items:
         item['salary_to'] = None
         item['salary_from'] = None
 
-features = ['name', 'area', 'key_skills', 'published_at_day', 'published_at_month', 'published_at_year',
-            'created_at_day', 'created_at_month', 'created_at_year', 'salary_from', 'salary_to']
+features = ['name', 'area', 'counters', 'key_skills', 'published_at', 'created_at', 'salary_from', 'salary_to']
 df = pd.DataFrame(items)
 df = df[features]
 df.to_csv('data.csv', index=False)
