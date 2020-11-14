@@ -1,0 +1,24 @@
+<table>
+    <thead>
+    <tr>
+        <td>#</td>
+        {% for column in df.columns %}
+            <td>{{ column }}</td>
+        {% endfor %}
+    </tr>
+    </thead>
+    <tbody>
+    {% for idx, row in df.iterrows %}
+        <tr>
+            <td>
+                {{ idx }}
+            </td>
+            {% for item in row %}
+                <td>
+                    {{ item }}
+                </td>
+            {% endfor %}
+        </tr>
+    {% endfor %}
+    </tbody>
+</table>
