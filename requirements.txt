@@ -1,0 +1,7 @@
+Django
+pandas
+matplotlib
+numpy
+sklearn
+plotly
+requests
