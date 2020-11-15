@@ -1,33 +1,11 @@
-from pyramid.arima import auto_arima   # pyramid-arima
+# from pyramid.arima import auto_arima   # pyramid-arima
 import matplotlib.pyplot as plt
 import pandas as pd
 import numpy as np
 import re
 import os
 
-
-def read_data(path='/content/gdrive/My Drive/Colab Notebooks/sber-hack/result_data.csv'):
-    data = pd.read_csv(path)
-
-    return data
-
-
-def prepare_data(data, vacancy, region=None):
-    test_data = data[['created_at', 'vacancy']][(data['vacancy'] == vacancy) & (data['area'] == region)]
-
-    test_data['created_at'] = pd.to_datetime(test_data.created_at).apply(lambda date: date.strftime('%Y-%m'))
-    test_data.head()
-
-    dt = test_data['vacancy'].groupby(test_data['created_at']).agg(['count'])
-    dt.head()
-
-    dt.index = pd.to_datetime(dt.index)
-
-    return dt
-
-
-def predict_arima(data, vacancy, region=None):
-    dt = prepare_data(data, vacancy, region=None)
+def predict_arima(dt):
 
     stepwise_model = auto_arima(dt, start_p=1, start_q=1,
                                 max_p=3, max_q=3, m=12,
@@ -45,6 +23,43 @@ def predict_arima(data, vacancy, region=None):
     future_forecast = pd.DataFrame(future_forecast, index=test.index, columns=['Prediction'])
 
     return test, future_forecast
+
+def read_data(path='/content/gdrive/My Drive/Colab Notebooks/sber-hack/result_data.csv'):
+    data = pd.read_csv(path)
+
+    return data
+
+
+def arima_vacancies(data, vacancy, region=None):
+    test_data = data[['created_at', 'vacancy']][(data['vacancy'] == vacancy) & (data['area'] == region)]
+
+    test_data['created_at'] = pd.to_datetime(test_data.created_at).apply(lambda date: date.strftime('%Y-%m'))
+    test_data['created_year'] = pd.to_datetime(test_data.created_at).apply(lambda date: date.strftime('%Y'))
+    test_data['created_month'] = pd.to_datetime(test_data.created_at).apply(lambda date: date.strftime('%m'))
+    test_data.head()
+
+    dt = test_data['vacancy'].groupby(test_data['created_at']).agg(['count'])
+
+    dt.index = pd.to_datetime(dt.index)
+
+    test, future_forecast = predict_arima(dt)
+    return test, future_forecast
+
+
+def arima_skills(data, vacancy, region=None):
+    test_data = data[['created_at', 'key_skills']][data['key_skills'] == 'JavaScript']
+    test_data['created_at'] = pd.to_datetime(test_data.created_at).apply(lambda date: date.strftime('%Y-%m'))
+    dt = test_data['key_skills'].groupby(test_data['created_at']).agg(['count'])
+    dt.index = pd.to_datetime(dt.index)
+
+    test, future_forecast = predict_arima(dt)
+    return test, future_forecast
+
+
+def main():
+    data = read_data()
+    test, future_forecast = arima_skills(data, 'Разработчик', region=None)
+
 
 
 
