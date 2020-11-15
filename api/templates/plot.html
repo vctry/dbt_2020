@@ -1,1 +1,60 @@
-<img src="data:image/png;base64,{{ data }}" alt="" height="400" ,width="400">
+<head>
+    <script src="https://code.jquery.com/jquery-3.5.1.min.js"></script>
+</head>
+<div>
+    <label>Split on regions<input type="checkbox" id="split_regions"></label>
+    <select id="region">
+        <option selected value="all">
+            =ALL regions=
+        </option>
+        {% for region in regions %}
+            <option value="{{ region }}">
+                {{ region }}
+            </option>
+        {% endfor %}
+    </select>
+    <select id="year">
+        <option selected value="all">
+            =ALL years=
+        </option>
+        {% for year in years %}
+            <option value="{{ year }}">
+                {{ year }}
+            </option>
+        {% endfor %}
+    </select>
+</div>
+<img id="result" src="" alt="" height="500" ,width="500">
+<script>
+    $(document).ready(function () {
+        const plot = () => {
+            let region = $("#region").val();
+            let year = $("#year").val();
+            let split = $("#split_regions").is(':checked');
+            if (split) {
+                $("#region").hide();
+                let year = $("#year").val();
+                $.get('/api/plot_change/', {space: true, year: year}, function (data) {
+                    $("#result").attr('src', `data:image/png;base64,${data}`)
+                })
+            }
+            else {
+                $.get('/api/plot_change/', {region: region, year: year}, function (data) {
+                    $("#result").attr('src', `data:image/png;base64,${data}`)
+                })
+            }
+        }
+        $.get('/api/plot_change/', function (data) {
+            plot()
+        })
+        $("#region").change(function () {
+            plot()
+        })
+        $("#year").change(function () {
+            plot()
+        })
+        $("#split_regions").click(function () {
+            plot()
+        })
+    })
+</script>

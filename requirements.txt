@@ -5,3 +5,4 @@ numpy
 sklearn
 plotly
 requests
+pyramid-arima
